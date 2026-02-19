@@ -14,6 +14,16 @@ public sealed class MainForm : Form
     private readonly ProgressBar _progressBar = new();
     private readonly TextBox _txtLog = new();
     private readonly Button _btnUpdate = new();
+
+    private readonly Panel _headerPanel = new();
+    private readonly FlowLayoutPanel _headerButtonsPanel = new();
+    private readonly Panel _leftCard = new();
+    private readonly Panel _rightCard = new();
+
+    private readonly Font _titleFont = new("Segoe UI Semibold", 16f, FontStyle.Bold);
+    private readonly Font _subtitleFont = new("Segoe UI", 9.5f, FontStyle.Regular);
+    private readonly Font _sectionFont = new("Segoe UI Semibold", 10.5f, FontStyle.Bold);
+
     private AppSettings _settings = new();
 
     public MainForm()
@@ -25,108 +35,234 @@ public sealed class MainForm : Form
     private void InitializeComponent()
     {
         Text = "Atualizador de Versao RDS";
-        Width = 900;
-        Height = 700;
+        Width = 1040;
+        Height = 720;
+        MinimumSize = new Size(980, 660);
         StartPosition = FormStartPosition.CenterScreen;
+        BackColor = Color.FromArgb(241, 245, 249);
 
-        _btnConfig.Text = "Configuracoes";
-        _btnConfig.Left = 20;
-        _btnConfig.Top = 20;
-        _btnConfig.Width = 130;
+        _headerPanel.Left = 16;
+        _headerPanel.Top = 12;
+        _headerPanel.Width = ClientSize.Width - 32;
+        _headerPanel.Height = 78;
+        _headerPanel.BackColor = Color.FromArgb(15, 23, 42);
+        _headerPanel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+        var lblTitle = new Label
+        {
+            Text = "Atualizador RDS",
+            Left = 18,
+            Top = 14,
+            AutoSize = true,
+            ForeColor = Color.White,
+            Font = _titleFont,
+            BackColor = Color.Transparent
+        };
+
+        var lblSubtitle = new Label
+        {
+            Text = "Selecione os executaveis e atualize os servidores com seguranca",
+            Left = 20,
+            Top = 47,
+            AutoSize = true,
+            ForeColor = Color.FromArgb(203, 213, 225),
+            Font = _subtitleFont,
+            BackColor = Color.Transparent
+        };
+
+        ConfigureActionButton(_btnConfig, "Configuracoes", 0, 0, 120, false);
         _btnConfig.Click += (_, _) => OpenConfigForm();
 
-        _btnReload.Text = "Recarregar EXEs";
-        _btnReload.Left = 160;
-        _btnReload.Top = 20;
-        _btnReload.Width = 130;
+        ConfigureActionButton(_btnReload, "Recarregar EXEs", 0, 0, 122, false);
         _btnReload.Click += (_, _) => LoadExecutableList();
 
-        _btnToggleLog.Text = "Exibir log";
-        _btnToggleLog.Left = 300;
-        _btnToggleLog.Top = 20;
-        _btnToggleLog.Width = 110;
+        ConfigureActionButton(_btnToggleLog, "Exibir log", 0, 0, 110, false);
         _btnToggleLog.Click += (_, _) => ToggleLog();
 
-        _lblSourceInfo.Left = 20;
-        _lblSourceInfo.Top = 60;
-        _lblSourceInfo.Width = 840;
-        _lblSourceInfo.Height = 40;
-        _lblSourceInfo.AutoSize = true;
+        _headerButtonsPanel.Left = 0;
+        _headerButtonsPanel.Top = 22;
+        _headerButtonsPanel.Width = _headerPanel.Width - 20;
+        _headerButtonsPanel.Height = 34;
+        _headerButtonsPanel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        _headerButtonsPanel.FlowDirection = FlowDirection.RightToLeft;
+        _headerButtonsPanel.WrapContents = false;
+        _headerButtonsPanel.BackColor = Color.Transparent;
+        _headerButtonsPanel.Padding = new Padding(0);
+        _headerButtonsPanel.Margin = new Padding(0);
 
-        _lblServersInfo.Left = 20;
-        _lblServersInfo.Top = 95;
-        _lblServersInfo.AutoSize = true;
+        _headerButtonsPanel.Controls.Add(_btnToggleLog);
+        _headerButtonsPanel.Controls.Add(_btnReload);
+        _headerButtonsPanel.Controls.Add(_btnConfig);
+
+        _headerPanel.Controls.Add(lblTitle);
+        _headerPanel.Controls.Add(lblSubtitle);
+        _headerPanel.Controls.Add(_headerButtonsPanel);
+
+        var infoPanel = new Panel
+        {
+            Left = 16,
+            Top = 98,
+            Width = ClientSize.Width - 32,
+            Height = 70,
+            BackColor = Color.White,
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+        };
+
+        _lblSourceInfo.Left = 14;
+        _lblSourceInfo.Top = 12;
+        _lblSourceInfo.Width = infoPanel.Width - 28;
+        _lblSourceInfo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _lblSourceInfo.Font = _subtitleFont;
+        _lblSourceInfo.ForeColor = Color.FromArgb(30, 41, 59);
+
+        _lblServersInfo.Left = 14;
+        _lblServersInfo.Top = 36;
+        _lblServersInfo.Width = infoPanel.Width - 28;
+        _lblServersInfo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _lblServersInfo.Font = _subtitleFont;
+        _lblServersInfo.ForeColor = Color.FromArgb(30, 41, 59);
+
+        infoPanel.Controls.Add(_lblSourceInfo);
+        infoPanel.Controls.Add(_lblServersInfo);
+
+        _leftCard.Left = 16;
+        _leftCard.Top = 178;
+        _leftCard.Width = 620;
+        _leftCard.Height = 390;
+        _leftCard.BackColor = Color.White;
+        _leftCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom;
 
         var lblExe = new Label
         {
-            Text = "Executaveis disponiveis na origem:",
-            Left = 20,
-            Top = 140,
-            Width = 280
+            Text = "Executaveis disponiveis",
+            Left = 14,
+            Top = 12,
+            AutoSize = true,
+            Font = _sectionFont,
+            ForeColor = Color.FromArgb(15, 23, 42)
         };
 
-        _exeImageList.ImageSize = new Size(16, 16);
+        _exeImageList.ImageSize = new Size(18, 18);
         _exeImageList.ColorDepth = ColorDepth.Depth32Bit;
 
-        _exeListView.Left = 20;
-        _exeListView.Top = 165;
-        _exeListView.Width = 400;
-        _exeListView.Height = 250;
+        _exeListView.Left = 14;
+        _exeListView.Top = 42;
+        _exeListView.Width = _leftCard.Width - 28;
+        _exeListView.Height = _leftCard.Height - 56;
+        _exeListView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
         _exeListView.View = View.Details;
         _exeListView.CheckBoxes = true;
         _exeListView.FullRowSelect = true;
         _exeListView.GridLines = false;
         _exeListView.HeaderStyle = ColumnHeaderStyle.None;
+        _exeListView.BorderStyle = BorderStyle.FixedSingle;
         _exeListView.SmallImageList = _exeImageList;
-        _exeListView.Columns.Add("Executavel", 380);
+        _exeListView.BackColor = Color.FromArgb(248, 250, 252);
+        _exeListView.Columns.Add("Executavel", _exeListView.Width - 26);
 
-        _btnUpdate.Text = "Atualizar selecionados";
-        _btnUpdate.Left = 20;
-        _btnUpdate.Top = 430;
-        _btnUpdate.Width = 180;
-        _btnUpdate.Click += async (_, _) => await RunUpdateAsync();
+        _leftCard.Controls.Add(lblExe);
+        _leftCard.Controls.Add(_exeListView);
 
-        _progressBar.Left = 20;
-        _progressBar.Top = 470;
-        _progressBar.Width = 400;
-        _progressBar.Height = 24;
-        _progressBar.Minimum = 0;
-        _progressBar.Maximum = 1000;
-        _progressBar.Value = 0;
+        _rightCard.Left = 646;
+        _rightCard.Top = 178;
+        _rightCard.Width = 378;
+        _rightCard.Height = 390;
+        _rightCard.BackColor = Color.White;
+        _rightCard.Anchor = AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom;
+        _rightCard.Visible = false;
 
-        _lblProgress.Left = 20;
-        _lblProgress.Top = 500;
-        _lblProgress.Width = 840;
-        _lblProgress.Height = 40;
-        _lblProgress.Text = "Pronto para executar.";
+        _lblLog.Text = "Log de execucao";
+        _lblLog.Left = 14;
+        _lblLog.Top = 12;
+        _lblLog.AutoSize = true;
+        _lblLog.Font = _sectionFont;
+        _lblLog.ForeColor = Color.FromArgb(15, 23, 42);
 
-        _lblLog.Text = "Log de execucao:";
-        _lblLog.Left = 440;
-        _lblLog.Top = 140;
-        _lblLog.Width = 200;
-        _lblLog.Visible = false;
-
-        _txtLog.Left = 440;
-        _txtLog.Top = 165;
-        _txtLog.Width = 420;
-        _txtLog.Height = 350;
+        _txtLog.Left = 14;
+        _txtLog.Top = 42;
+        _txtLog.Width = _rightCard.Width - 28;
+        _txtLog.Height = _rightCard.Height - 56;
+        _txtLog.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
         _txtLog.Multiline = true;
         _txtLog.ScrollBars = ScrollBars.Vertical;
         _txtLog.ReadOnly = true;
-        _txtLog.Visible = false;
+        _txtLog.BorderStyle = BorderStyle.FixedSingle;
+        _txtLog.BackColor = Color.FromArgb(248, 250, 252);
+        _txtLog.Font = new Font("Consolas", 9f, FontStyle.Regular);
 
-        Controls.Add(_btnConfig);
-        Controls.Add(_btnReload);
-        Controls.Add(_btnToggleLog);
-        Controls.Add(_lblSourceInfo);
-        Controls.Add(_lblServersInfo);
-        Controls.Add(lblExe);
-        Controls.Add(_exeListView);
+        _rightCard.Controls.Add(_lblLog);
+        _rightCard.Controls.Add(_txtLog);
+
+        ConfigureActionButton(_btnUpdate, "Atualizar selecionados", 16, 582, 220, true);
+        _btnUpdate.Anchor = AnchorStyles.Left | AnchorStyles.Bottom;
+        _btnUpdate.Click += async (_, _) => await RunUpdateAsync();
+
+        _progressBar.Left = 252;
+        _progressBar.Top = 586;
+        _progressBar.Width = ClientSize.Width - 268;
+        _progressBar.Height = 22;
+        _progressBar.Minimum = 0;
+        _progressBar.Maximum = 1000;
+        _progressBar.Value = 0;
+        _progressBar.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
+
+        _lblProgress.Left = 252;
+        _lblProgress.Top = 612;
+        _lblProgress.Width = ClientSize.Width - 268;
+        _lblProgress.Height = 25;
+        _lblProgress.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
+        _lblProgress.Font = _subtitleFont;
+        _lblProgress.ForeColor = Color.FromArgb(51, 65, 85);
+        _lblProgress.Text = "Pronto para executar.";
+
+        Controls.Add(_headerPanel);
+        Controls.Add(infoPanel);
+        Controls.Add(_leftCard);
+        Controls.Add(_rightCard);
         Controls.Add(_btnUpdate);
         Controls.Add(_progressBar);
         Controls.Add(_lblProgress);
-        Controls.Add(_lblLog);
-        Controls.Add(_txtLog);
+
+        Resize += (_, _) => AdjustLayout();
+        AdjustLayout();
+    }
+
+    private void ConfigureActionButton(Button button, string text, int left, int top, int width, bool primary)
+    {
+        button.Text = text;
+        button.Left = left;
+        button.Top = top;
+        button.Width = width;
+        button.Height = 34;
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 0;
+        button.Cursor = Cursors.Hand;
+        button.Font = new Font("Segoe UI Semibold", 9.5f, FontStyle.Bold);
+        button.BackColor = primary ? Color.FromArgb(14, 116, 144) : Color.FromArgb(226, 232, 240);
+        button.ForeColor = primary ? Color.White : Color.FromArgb(15, 23, 42);
+        button.Margin = new Padding(6, 0, 0, 0);
+    }
+
+    private void AdjustLayout()
+    {
+        var availableWidth = ClientSize.Width - 32;
+        var showLog = _rightCard.Visible;
+        var buttonsWidth = _headerButtonsPanel.Controls.Cast<Control>().Sum(control => control.Width + control.Margin.Left + control.Margin.Right);
+        _headerButtonsPanel.Width = buttonsWidth;
+        _headerButtonsPanel.Left = Math.Max(14, _headerPanel.Width - _headerButtonsPanel.Width - 14);
+
+        if (showLog)
+        {
+            _leftCard.Width = Math.Max(460, (availableWidth - 10) * 60 / 100);
+            _rightCard.Left = _leftCard.Right + 10;
+            _rightCard.Width = availableWidth - _leftCard.Width - 10;
+        }
+        else
+        {
+            _leftCard.Width = availableWidth;
+        }
+
+        _exeListView.Columns[0].Width = Math.Max(220, _exeListView.ClientSize.Width - 4);
     }
 
     private void LoadSettingsAndExecutables()
@@ -224,6 +360,7 @@ public sealed class MainForm : Form
         _btnUpdate.Enabled = false;
         _btnConfig.Enabled = false;
         _btnReload.Enabled = false;
+        _btnToggleLog.Enabled = false;
         _exeListView.Enabled = false;
         UseWaitCursor = true;
 
@@ -261,16 +398,17 @@ public sealed class MainForm : Form
             _btnUpdate.Enabled = true;
             _btnConfig.Enabled = true;
             _btnReload.Enabled = true;
+            _btnToggleLog.Enabled = true;
             _exeListView.Enabled = true;
         }
     }
 
     private void ToggleLog()
     {
-        var show = !_txtLog.Visible;
-        _txtLog.Visible = show;
-        _lblLog.Visible = show;
+        var show = !_rightCard.Visible;
+        _rightCard.Visible = show;
         _btnToggleLog.Text = show ? "Ocultar log" : "Exibir log";
+        AdjustLayout();
     }
 
     private void AppendLog(string message)

@@ -47,7 +47,7 @@ public static class UpdateService
             {
                 var sourceExe = Path.Combine(sourceFolder, exeName);
                 var targetExe = Path.Combine(serverFolder, exeName);
-                var removerExe = Path.Combine(serverFolder, $"REMOVER_{exeName}");
+                var removerBaseExe = Path.Combine(serverFolder, $"REMOVER_{exeName}");
 
                 if (!serverExists)
                 {
@@ -61,13 +61,9 @@ public static class UpdateService
 
                 try
                 {
-                    if (File.Exists(removerExe))
-                    {
-                        File.Delete(removerExe);
-                    }
-
                     if (File.Exists(targetExe))
                     {
+                        var removerExe = GetNextAvailablePath(removerBaseExe);
                         File.Move(targetExe, removerExe);
                         Report($"[{serverFolder}] Renomeado com sucesso: {targetExe} -> {removerExe}");
                     }
@@ -111,6 +107,31 @@ public static class UpdateService
         }
 
         Report("Processo finalizado.", appendToLog: false, percent: 100d);
+    }
+
+    private static string GetNextAvailablePath(string basePath)
+    {
+        if (!File.Exists(basePath))
+        {
+            return basePath;
+        }
+
+        var directory = Path.GetDirectoryName(basePath) ?? string.Empty;
+        var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(basePath);
+        var extension = Path.GetExtension(basePath);
+
+        var counter = 2;
+        while (true)
+        {
+            var candidateName = $"{fileNameWithoutExtension} ({counter}){extension}";
+            var candidatePath = Path.Combine(directory, candidateName);
+            if (!File.Exists(candidatePath))
+            {
+                return candidatePath;
+            }
+
+            counter++;
+        }
     }
 
     private static void CopyFileWithProgress(string sourcePath, string targetPath, Action<double> onProgress)
