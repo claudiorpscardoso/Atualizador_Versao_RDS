@@ -1,5 +1,7 @@
 # 🚀 Manual de Uso - Atualizador de Versão RDS
 
+English version: [`README.en.md`](README.en.md)
+
 ## 📦 Instalação rápida
 Pré-requisito: .NET SDK 10 instalado.
 
@@ -128,5 +130,4 @@ No arquivo `settings.json`, junto do executável do aplicativo.
 
 ## 📚 Arquivos úteis do projeto
 - `CHANGELOG.md`: histórico de versões.
-- `PUBLICACAO_CHECKLIST.md`: checklist para abrir o projeto ao público.
 - `LICENSE`: licença MIT.
