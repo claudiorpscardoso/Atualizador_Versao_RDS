@@ -1,0 +1,52 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_PATH: AtualizadorVersaoRds/AtualizadorVersaoRds.csproj
+  DOTNET_VERSION: 10.0.x
+  BUILD_CONFIGURATION: Release
+  RUNTIME_ID: win-x64
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore project
+        run: dotnet restore $env:PROJECT_PATH
+
+      - name: Publish app
+        run: >
+          dotnet publish $env:PROJECT_PATH
+          -c $env:BUILD_CONFIGURATION
+          -r $env:RUNTIME_ID
+          --self-contained false
+          -o publish/${{ env.RUNTIME_ID }}
+
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          $zipName = "AtualizadorVersaoRds-${{ github.ref_name }}-${{ env.RUNTIME_ID }}.zip"
+          Compress-Archive -Path "publish/${{ env.RUNTIME_ID }}/*" -DestinationPath $zipName -Force
+
+      - name: Create GitHub Release and upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            AtualizadorVersaoRds-${{ github.ref_name }}-${{ env.RUNTIME_ID }}.zip
+          generate_release_notes: true

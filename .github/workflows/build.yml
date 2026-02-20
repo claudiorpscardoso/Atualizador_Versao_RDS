@@ -1,0 +1,56 @@
+name: Build Desktop App
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  SOLUTION_PATH: Atualizador_Versao_RDS.sln
+  PROJECT_PATH: AtualizadorVersaoRds/AtualizadorVersaoRds.csproj
+  DOTNET_VERSION: 10.0.x
+  BUILD_CONFIGURATION: Release
+  RUNTIME_ID: win-x64
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore solution
+        run: dotnet restore $env:SOLUTION_PATH
+
+      - name: Build solution
+        run: dotnet build $env:SOLUTION_PATH -c $env:BUILD_CONFIGURATION --no-restore
+
+      - name: Publish app
+        run: >
+          dotnet publish $env:PROJECT_PATH
+          -c $env:BUILD_CONFIGURATION
+          -r $env:RUNTIME_ID
+          --self-contained false
+          -o publish/${{ env.RUNTIME_ID }}
+
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          $zipName = "AtualizadorVersaoRds-${{ env.BUILD_CONFIGURATION }}-${{ env.RUNTIME_ID }}.zip"
+          Compress-Archive -Path "publish/${{ env.RUNTIME_ID }}/*" -DestinationPath $zipName -Force
+
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AtualizadorVersaoRds-${{ env.BUILD_CONFIGURATION }}-${{ env.RUNTIME_ID }}
+          path: |
+            publish/${{ env.RUNTIME_ID }}
+            AtualizadorVersaoRds-${{ env.BUILD_CONFIGURATION }}-${{ env.RUNTIME_ID }}.zip
