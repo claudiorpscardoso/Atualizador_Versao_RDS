@@ -1,5 +1,8 @@
 # 🚀 Manual de Uso - Atualizador de Versão RDS
 
+[![Build Desktop App](https://github.com/claudiorpscardoso/Atualizador_Versao_RDS/actions/workflows/build.yml/badge.svg)](https://github.com/claudiorpscardoso/Atualizador_Versao_RDS/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 English version: [`README.en.md`](README.en.md)
 
 ## 📦 Instalação rápida
@@ -131,3 +134,12 @@ No arquivo `settings.json`, junto do executável do aplicativo.
 ## 📚 Arquivos úteis do projeto
 - `CHANGELOG.md`: histórico de versões.
 - `LICENSE`: licença MIT.
+- `CONTRIBUTING.md`: guia rápido para contribuir.
+
+---
+
+## 🤝 Contribuição
+Contribuições são bem-vindas.
+
+Antes de abrir PR, leia:
+- `CONTRIBUTING.md`
