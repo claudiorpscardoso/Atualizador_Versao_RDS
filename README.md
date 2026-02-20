@@ -1,5 +1,16 @@
 # 🚀 Manual de Uso - Atualizador de Versão RDS
 
+## 📦 Instalação rápida
+Pré-requisito: .NET SDK 10 instalado.
+
+```powershell
+dotnet build
+dotnet run --project .\AtualizadorVersaoRds
+```
+
+## 🔐 Aviso de segurança
+Use primeiro em ambiente de teste. Sempre valide pastas de origem/destino antes de rodar em produção.
+
 ## 🎯 Para que serve
 Este aplicativo atualiza arquivos `.exe` em pastas de servidores da rede, usando uma pasta de origem como base.
 
@@ -112,3 +123,10 @@ Sim. A tela de configurações aceita vários caminhos.
 
 ### Onde as configurações ficam salvas?
 No arquivo `settings.json`, junto do executável do aplicativo.
+
+---
+
+## 📚 Arquivos úteis do projeto
+- `CHANGELOG.md`: histórico de versões.
+- `PUBLICACAO_CHECKLIST.md`: checklist para abrir o projeto ao público.
+- `LICENSE`: licença MIT.
