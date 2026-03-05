@@ -9,8 +9,13 @@ public sealed class MainForm : Form
     private readonly Label _lblServersInfo = new();
     private readonly Label _lblProgress = new();
     private readonly Label _lblLog = new();
+    private readonly Label _lblExeList = new();
+    private readonly Label _lblServerList = new();
     private readonly ListView _exeListView = new();
     private readonly ImageList _exeImageList = new();
+    private readonly CheckedListBox _serverListBox = new();
+    private readonly ContextMenuStrip _exeListMenu = new();
+    private readonly ContextMenuStrip _serverListMenu = new();
     private readonly ProgressBar _progressBar = new();
     private readonly TextBox _txtLog = new();
     private readonly Button _btnUpdate = new();
@@ -132,22 +137,36 @@ public sealed class MainForm : Form
         _leftCard.BackColor = Color.White;
         _leftCard.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom;
 
-        var lblExe = new Label
-        {
-            Text = "Executaveis disponiveis",
-            Left = 14,
-            Top = 12,
-            AutoSize = true,
-            Font = _sectionFont,
-            ForeColor = Color.FromArgb(15, 23, 42)
-        };
+        _lblServerList.Text = "Servidores para atualizar";
+        _lblServerList.Left = 14;
+        _lblServerList.Top = 12;
+        _lblServerList.AutoSize = true;
+        _lblServerList.Font = _sectionFont;
+        _lblServerList.ForeColor = Color.FromArgb(15, 23, 42);
+
+        _serverListBox.Left = 14;
+        _serverListBox.Top = 42;
+        _serverListBox.Width = 290;
+        _serverListBox.Height = _leftCard.Height - 56;
+        _serverListBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom;
+        _serverListBox.CheckOnClick = true;
+        _serverListBox.HorizontalScrollbar = true;
+        _serverListBox.BackColor = Color.FromArgb(248, 250, 252);
+        _serverListBox.Font = new Font("Segoe UI", 9f, FontStyle.Regular);
+
+        _lblExeList.Text = "Executaveis disponiveis";
+        _lblExeList.Left = 316;
+        _lblExeList.Top = 12;
+        _lblExeList.AutoSize = true;
+        _lblExeList.Font = _sectionFont;
+        _lblExeList.ForeColor = Color.FromArgb(15, 23, 42);
 
         _exeImageList.ImageSize = new Size(18, 18);
         _exeImageList.ColorDepth = ColorDepth.Depth32Bit;
 
-        _exeListView.Left = 14;
+        _exeListView.Left = 316;
         _exeListView.Top = 42;
-        _exeListView.Width = _leftCard.Width - 28;
+        _exeListView.Width = _leftCard.Width - 330;
         _exeListView.Height = _leftCard.Height - 56;
         _exeListView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
         _exeListView.View = View.Details;
@@ -160,7 +179,10 @@ public sealed class MainForm : Form
         _exeListView.BackColor = Color.FromArgb(248, 250, 252);
         _exeListView.Columns.Add("Executavel", _exeListView.Width - 26);
 
-        _leftCard.Controls.Add(lblExe);
+        InitializeListContextMenus();
+        _leftCard.Controls.Add(_lblServerList);
+        _leftCard.Controls.Add(_serverListBox);
+        _leftCard.Controls.Add(_lblExeList);
         _leftCard.Controls.Add(_exeListView);
 
         _rightCard.Left = 646;
@@ -243,6 +265,33 @@ public sealed class MainForm : Form
         button.Margin = new Padding(6, 0, 0, 0);
     }
 
+    private void InitializeListContextMenus()
+    {
+        _exeListMenu.Items.Add("Marcar todos", null, (_, _) => SetAllExeChecks(true));
+        _exeListMenu.Items.Add("Desmarcar todos", null, (_, _) => SetAllExeChecks(false));
+        _exeListView.ContextMenuStrip = _exeListMenu;
+
+        _serverListMenu.Items.Add("Marcar todos", null, (_, _) => SetAllServerChecks(true));
+        _serverListMenu.Items.Add("Desmarcar todos", null, (_, _) => SetAllServerChecks(false));
+        _serverListBox.ContextMenuStrip = _serverListMenu;
+    }
+
+    private void SetAllExeChecks(bool isChecked)
+    {
+        foreach (ListViewItem item in _exeListView.Items)
+        {
+            item.Checked = isChecked;
+        }
+    }
+
+    private void SetAllServerChecks(bool isChecked)
+    {
+        for (var index = 0; index < _serverListBox.Items.Count; index++)
+        {
+            _serverListBox.SetItemChecked(index, isChecked);
+        }
+    }
+
     private void AdjustLayout()
     {
         var availableWidth = ClientSize.Width - 32;
@@ -253,7 +302,7 @@ public sealed class MainForm : Form
 
         if (showLog)
         {
-            _leftCard.Width = Math.Max(460, (availableWidth - 10) * 60 / 100);
+            _leftCard.Width = Math.Max(500, (availableWidth - 10) * 60 / 100);
             _rightCard.Left = _leftCard.Right + 10;
             _rightCard.Width = availableWidth - _leftCard.Width - 10;
         }
@@ -262,6 +311,24 @@ public sealed class MainForm : Form
             _leftCard.Width = availableWidth;
         }
 
+        const int leftPadding = 14;
+        const int top = 42;
+        const int bottomPadding = 14;
+        const int sectionGap = 12;
+        var listHeight = _leftCard.Height - top - bottomPadding;
+        var contentWidth = _leftCard.Width - (leftPadding * 2);
+        var halfWidth = Math.Max(180, (contentWidth - sectionGap) / 2);
+
+        _serverListBox.Left = leftPadding;
+        _serverListBox.Top = top;
+        _serverListBox.Width = halfWidth;
+        _serverListBox.Height = listHeight;
+
+        _lblExeList.Left = _serverListBox.Right + sectionGap;
+        _exeListView.Left = _lblExeList.Left;
+        _exeListView.Top = top;
+        _exeListView.Width = _leftCard.Width - _exeListView.Left - leftPadding;
+        _exeListView.Height = listHeight;
         _exeListView.Columns[0].Width = Math.Max(220, _exeListView.ClientSize.Width - 4);
     }
 
@@ -269,6 +336,7 @@ public sealed class MainForm : Form
     {
         _settings = SettingsService.Load();
         RefreshSettingsLabels();
+        LoadServerList();
         LoadExecutableList();
     }
 
@@ -290,6 +358,15 @@ public sealed class MainForm : Form
         {
             LoadSettingsAndExecutables();
             AppendLog("Configuracoes atualizadas.");
+        }
+    }
+
+    private void LoadServerList()
+    {
+        _serverListBox.Items.Clear();
+        foreach (var server in _settings.ServerFolders)
+        {
+            _serverListBox.Items.Add(server, true);
         }
     }
 
@@ -346,6 +423,17 @@ public sealed class MainForm : Form
             return;
         }
 
+        var selectedServerFolders = _serverListBox.CheckedItems
+            .Cast<string>()
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (selectedServerFolders.Count == 0)
+        {
+            MessageBox.Show(this, "Selecione ao menos uma pasta de servidor para atualizar.", "Atencao", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
         var selectedExeNames = _exeListView.CheckedItems
             .Cast<ListViewItem>()
             .Select(item => item.Text)
@@ -362,6 +450,7 @@ public sealed class MainForm : Form
         _btnReload.Enabled = false;
         _btnToggleLog.Enabled = false;
         _exeListView.Enabled = false;
+        _serverListBox.Enabled = false;
         UseWaitCursor = true;
 
         try
@@ -384,7 +473,7 @@ public sealed class MainForm : Form
             });
 
             await Task.Run(() =>
-                UpdateService.RunUpdate(_settings.SourceFolder, _settings.ServerFolders, selectedExeNames, progress));
+                UpdateService.RunUpdate(_settings.SourceFolder, selectedServerFolders, selectedExeNames, progress));
 
             _lblProgress.Text = "Atualizacao concluida.";
             _progressBar.Value = _progressBar.Maximum;
@@ -400,6 +489,7 @@ public sealed class MainForm : Form
             _btnReload.Enabled = true;
             _btnToggleLog.Enabled = true;
             _exeListView.Enabled = true;
+            _serverListBox.Enabled = true;
         }
     }
 
