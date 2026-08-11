@@ -6,6 +6,17 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <Product>Atualizador de Versao RDS</Product>
+    <AssemblyTitle>Atualizador de Versao RDS</AssemblyTitle>
+    <Description>Atualiza executaveis em pastas de servidores a partir de uma pasta de origem.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AtualizadorVersaoRds.Tests" />
+  </ItemGroup>
 
 </Project>
