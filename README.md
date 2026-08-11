@@ -10,6 +10,7 @@ Pré-requisito: .NET SDK 10 instalado.
 
 ```powershell
 dotnet build
+dotnet test
 dotnet run --project .\AtualizadorVersaoRds
 ```
 
@@ -30,9 +31,15 @@ Em resumo:
 ## ⚙️ O que o sistema faz na atualização
 Para cada servidor e para cada executável selecionado:
 1. Acessa a pasta do servidor.
-2. Procura o executável antigo naquele servidor.
-3. Se existir, renomeia para backup com prefixo `REMOVER_`.
-4. Copia o executável novo da pasta de origem.
+2. Copia o executável novo para um arquivo temporário no servidor e confere o tamanho.
+3. Se o executável antigo existir, renomeia para backup com prefixo `REMOVER_`.
+4. Promove o arquivo temporário para o nome final.
+
+### 🛡️ Por que a cópia vem antes do backup
+O arquivo do servidor só é tocado depois que a cópia foi concluída e validada.
+Se qualquer etapa falhar — rede caiu, executável em uso, sem permissão — o
+processo desfaz o que fez e **a versão que estava no servidor continua intacta**.
+O item entra como falha no resumo e o processo segue para os demais.
 
 ### 📦 Regra de backup (importante)
 Se já existir um arquivo `REMOVER_Nome.exe`, o sistema **não apaga**.
@@ -51,7 +58,8 @@ Na tela principal você encontra:
 - `Recarregar EXEs`: atualiza a lista de `.exe` da pasta de origem.
 - `Exibir log`: mostra/oculta detalhes da execução.
 - Lista de executáveis: com checkbox e ícone de cada arquivo.
-- `Atualizar selecionados`: inicia o processo.
+- `Atualizar selecionados`: inicia o processo (pede confirmação antes).
+- `Cancelar`: interrompe a execução em andamento com segurança.
 - Barra de progresso: mostra andamento em tempo real.
 - Status: mostra o passo atual (servidor, arquivo e ação).
 
@@ -69,10 +77,13 @@ Na tela principal você encontra:
 
 ## 🔄 Atualizando executáveis (passo a passo)
 1. Na tela principal, clique em `Recarregar EXEs`.
-2. Marque os executáveis desejados.
-3. Clique em `Atualizar selecionados`.
+2. Marque os servidores e os executáveis desejados.
+3. Clique em `Atualizar selecionados` e confirme o resumo exibido.
 4. Acompanhe o status e a barra de progresso.
-5. Ao final, confira a mensagem de conclusão.
+5. Ao final, confira a mensagem de conclusão — ela informa quantos itens
+   tiveram sucesso e quantos falharam.
+
+💡 Clique com o botão direito nas listas para `Marcar todos` / `Desmarcar todos`.
 
 ---
 
@@ -127,7 +138,21 @@ Sim. Basta marcar apenas os `.exe` desejados.
 Sim. A tela de configurações aceita vários caminhos.
 
 ### Onde as configurações ficam salvas?
-No arquivo `settings.json`, junto do executável do aplicativo.
+Em `%APPDATA%\AtualizadorVersaoRds\settings.json`. Se você vem da versão 1.0.x,
+o arquivo antigo (ao lado do executável) é migrado automaticamente no primeiro uso.
+
+### Onde fica o log das execuções?
+Em `%APPDATA%\AtualizadorVersaoRds\logs\atualizacao-AAAAMMDD.log`, um arquivo por dia.
+O painel `Exibir log` mostra o mesmo conteúdo da sessão atual.
+
+### Posso cancelar no meio?
+Sim. O botão `Cancelar` interrompe após concluir o arquivo em andamento,
+sem deixar executável pela metade no servidor.
+
+### Preciso instalar o .NET?
+Depende do pacote baixado na página de releases:
+- `...-win-x64.zip`: menor, exige o **.NET Desktop Runtime 10**.
+- `...-win-x64-self-contained.zip`: executável único, não exige nada instalado.
 
 ---
 
