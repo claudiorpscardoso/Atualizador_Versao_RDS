@@ -9,6 +9,7 @@ permissions:
   contents: write
 
 env:
+  SOLUTION_PATH: Atualizador_Versao_RDS.sln
   PROJECT_PATH: AtualizadorVersaoRds/AtualizadorVersaoRds.csproj
   DOTNET_VERSION: 10.0.x
   BUILD_CONFIGURATION: Release
@@ -27,26 +28,54 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore project
-        run: dotnet restore $env:PROJECT_PATH
+      - name: Resolve version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+') {
+            Write-Error "Tag '${{ github.ref_name }}' nao segue o formato vX.Y.Z"
+            exit 1
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Publish app
+      - name: Restore solution
+        run: dotnet restore $env:SOLUTION_PATH
+
+      - name: Run tests
+        run: dotnet test $env:SOLUTION_PATH -c $env:BUILD_CONFIGURATION
+
+      # Framework-dependent: pacote pequeno, exige o .NET Desktop Runtime 10 na maquina.
+      - name: Publish framework-dependent
         run: >
           dotnet publish $env:PROJECT_PATH
           -c $env:BUILD_CONFIGURATION
           -r $env:RUNTIME_ID
           --self-contained false
-          -o publish/${{ env.RUNTIME_ID }}
+          -p:Version=${{ steps.version.outputs.value }}
+          -o publish/framework-dependent
 
-      - name: Create ZIP package
+      # Self-contained: executavel unico (~115 MB), nao exige runtime instalado.
+      - name: Publish self-contained
+        run: >
+          dotnet publish $env:PROJECT_PATH
+          -c $env:BUILD_CONFIGURATION
+          -r $env:RUNTIME_ID
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:Version=${{ steps.version.outputs.value }}
+          -o publish/self-contained
+
+      - name: Create ZIP packages
         shell: pwsh
         run: |
-          $zipName = "AtualizadorVersaoRds-${{ github.ref_name }}-${{ env.RUNTIME_ID }}.zip"
-          Compress-Archive -Path "publish/${{ env.RUNTIME_ID }}/*" -DestinationPath $zipName -Force
+          Compress-Archive -Path "publish/framework-dependent/*" -DestinationPath "AtualizadorVersaoRds-${{ github.ref_name }}-${{ env.RUNTIME_ID }}.zip" -Force
+          Compress-Archive -Path "publish/self-contained/*" -DestinationPath "AtualizadorVersaoRds-${{ github.ref_name }}-${{ env.RUNTIME_ID }}-self-contained.zip" -Force
 
-      - name: Create GitHub Release and upload asset
+      - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             AtualizadorVersaoRds-${{ github.ref_name }}-${{ env.RUNTIME_ID }}.zip
+            AtualizadorVersaoRds-${{ github.ref_name }}-${{ env.RUNTIME_ID }}-self-contained.zip
           generate_release_notes: true

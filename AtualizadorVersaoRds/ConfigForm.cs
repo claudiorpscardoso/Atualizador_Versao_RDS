@@ -265,7 +265,17 @@ public sealed class ConfigForm : Form
             ServerFolders = servers
         };
 
-        SettingsService.Save(_settings);
+        if (!SettingsService.TrySave(_settings, out var error))
+        {
+            MessageBox.Show(
+                this,
+                $"Nao foi possivel salvar as configuracoes em:{Environment.NewLine}{AppPaths.SettingsFile}{Environment.NewLine}{Environment.NewLine}{error}",
+                "Erro ao salvar",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
+        }
+
         DialogResult = DialogResult.OK;
         Close();
     }

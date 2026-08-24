@@ -13,12 +13,14 @@ public sealed class MainForm : Form
     private readonly Label _lblServerList = new();
     private readonly ListView _exeListView = new();
     private readonly ImageList _exeImageList = new();
+    private readonly List<Bitmap> _exeIcons = [];
     private readonly CheckedListBox _serverListBox = new();
     private readonly ContextMenuStrip _exeListMenu = new();
     private readonly ContextMenuStrip _serverListMenu = new();
     private readonly ProgressBar _progressBar = new();
     private readonly TextBox _txtLog = new();
     private readonly Button _btnUpdate = new();
+    private readonly Button _btnCancel = new();
 
     private readonly Panel _headerPanel = new();
     private readonly FlowLayoutPanel _headerButtonsPanel = new();
@@ -29,12 +31,20 @@ public sealed class MainForm : Form
     private readonly Font _subtitleFont = new("Segoe UI", 9.5f, FontStyle.Regular);
     private readonly Font _sectionFont = new("Segoe UI Semibold", 10.5f, FontStyle.Bold);
 
+    private readonly FileLogger _fileLogger = new();
+
     private AppSettings _settings = new();
+    private CancellationTokenSource? _cancellation;
 
     public MainForm()
     {
         InitializeComponent();
         LoadSettingsAndExecutables();
+
+        if (_fileLogger.IsEnabled)
+        {
+            AppendLog($"Log gravado em: {_fileLogger.FilePath}");
+        }
     }
 
     private void InitializeComponent()
@@ -219,18 +229,23 @@ public sealed class MainForm : Form
         _btnUpdate.Anchor = AnchorStyles.Left | AnchorStyles.Bottom;
         _btnUpdate.Click += async (_, _) => await RunUpdateAsync();
 
-        _progressBar.Left = 252;
+        ConfigureActionButton(_btnCancel, "Cancelar", 244, 582, 100, false);
+        _btnCancel.Anchor = AnchorStyles.Left | AnchorStyles.Bottom;
+        _btnCancel.Enabled = false;
+        _btnCancel.Click += (_, _) => CancelUpdate();
+
+        _progressBar.Left = 356;
         _progressBar.Top = 586;
-        _progressBar.Width = ClientSize.Width - 268;
+        _progressBar.Width = ClientSize.Width - 372;
         _progressBar.Height = 22;
         _progressBar.Minimum = 0;
         _progressBar.Maximum = 1000;
         _progressBar.Value = 0;
         _progressBar.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
 
-        _lblProgress.Left = 252;
+        _lblProgress.Left = 356;
         _lblProgress.Top = 612;
-        _lblProgress.Width = ClientSize.Width - 268;
+        _lblProgress.Width = ClientSize.Width - 372;
         _lblProgress.Height = 25;
         _lblProgress.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
         _lblProgress.Font = _subtitleFont;
@@ -242,10 +257,12 @@ public sealed class MainForm : Form
         Controls.Add(_leftCard);
         Controls.Add(_rightCard);
         Controls.Add(_btnUpdate);
+        Controls.Add(_btnCancel);
         Controls.Add(_progressBar);
         Controls.Add(_lblProgress);
 
         Resize += (_, _) => AdjustLayout();
+        FormClosing += OnFormClosing;
         AdjustLayout();
     }
 
@@ -373,7 +390,7 @@ public sealed class MainForm : Form
     private void LoadExecutableList()
     {
         _exeListView.Items.Clear();
-        _exeImageList.Images.Clear();
+        ExeIcons.Clear(_exeImageList, _exeIcons);
 
         if (string.IsNullOrWhiteSpace(_settings.SourceFolder))
         {
@@ -388,16 +405,17 @@ public sealed class MainForm : Form
         }
 
         var exeFiles = Directory.GetFiles(_settings.SourceFolder, "*.exe", SearchOption.TopDirectoryOnly)
-            .OfType<string>()
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Os icones sao carregados na mesma ordem dos arquivos, para que o indice de
+        // cada ListViewItem aponte para a imagem certa.
+        ExeIcons.Load(_exeImageList, _exeIcons, exeFiles);
+
         for (var index = 0; index < exeFiles.Count; index++)
         {
-            var exePath = exeFiles[index];
-            var exeName = Path.GetFileName(exePath);
+            var exeName = Path.GetFileName(exeFiles[index]);
 
-            _exeImageList.Images.Add(LoadExeIcon(exePath));
             var item = new ListViewItem(exeName, index)
             {
                 Checked = false
@@ -445,13 +463,13 @@ public sealed class MainForm : Form
             return;
         }
 
-        _btnUpdate.Enabled = false;
-        _btnConfig.Enabled = false;
-        _btnReload.Enabled = false;
-        _btnToggleLog.Enabled = false;
-        _exeListView.Enabled = false;
-        _serverListBox.Enabled = false;
-        UseWaitCursor = true;
+        if (!ConfirmUpdate(selectedServerFolders, selectedExeNames))
+        {
+            return;
+        }
+
+        _cancellation = new CancellationTokenSource();
+        SetBusyState(true);
 
         try
         {
@@ -459,7 +477,7 @@ public sealed class MainForm : Form
             _progressBar.Maximum = 1000;
             _progressBar.Value = 0;
             _lblProgress.Text = "Iniciando atualizacao...";
-            AppendLog("Inicio da atualizacao.");
+            AppendLog($"Inicio da atualizacao: {selectedExeNames.Count} executavel(is) em {selectedServerFolders.Count} servidor(es).");
 
             var progress = new Progress<UpdateProgressInfo>(info =>
             {
@@ -472,25 +490,146 @@ public sealed class MainForm : Form
                 }
             });
 
-            await Task.Run(() =>
-                UpdateService.RunUpdate(_settings.SourceFolder, selectedServerFolders, selectedExeNames, progress));
+            var token = _cancellation.Token;
+            var summary = await Task.Run(() =>
+                UpdateService.RunUpdate(_settings.SourceFolder, selectedServerFolders, selectedExeNames, progress, token));
 
-            _lblProgress.Text = "Atualizacao concluida.";
-            _progressBar.Value = _progressBar.Maximum;
-            AppendLog("Fim da atualizacao.");
-
-            MessageBox.Show(this, "Atualizacao concluida. Veja o log para detalhes.", "Sucesso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            AppendLog($"Fim da atualizacao. Sucesso: {summary.Succeeded} | Falha: {summary.Failed}.");
+            ShowSummary(summary);
+        }
+        catch (Exception ex)
+        {
+            _lblProgress.Text = "Atualizacao interrompida por erro.";
+            AppendLog($"ERRO inesperado: {ex}");
+            MessageBox.Show(
+                this,
+                $"A atualizacao foi interrompida por um erro inesperado:{Environment.NewLine}{Environment.NewLine}{ex.Message}",
+                "Erro",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
         finally
         {
-            UseWaitCursor = false;
-            _btnUpdate.Enabled = true;
-            _btnConfig.Enabled = true;
-            _btnReload.Enabled = true;
-            _btnToggleLog.Enabled = true;
-            _exeListView.Enabled = true;
-            _serverListBox.Enabled = true;
+            SetBusyState(false);
+            _cancellation.Dispose();
+            _cancellation = null;
         }
+    }
+
+    private bool ConfirmUpdate(IReadOnlyCollection<string> servers, IReadOnlyCollection<string> exeNames)
+    {
+        var message =
+            $"Confirma a atualizacao de {exeNames.Count} executavel(is) em {servers.Count} servidor(es)?" +
+            $"{Environment.NewLine}{Environment.NewLine}Origem: {_settings.SourceFolder}" +
+            $"{Environment.NewLine}{Environment.NewLine}Executaveis:{Environment.NewLine}{FormatPreview(exeNames)}" +
+            $"{Environment.NewLine}{Environment.NewLine}Servidores:{Environment.NewLine}{FormatPreview(servers)}";
+
+        var answer = MessageBox.Show(
+            this,
+            message,
+            "Confirmar atualizacao",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+
+        return answer == DialogResult.Yes;
+    }
+
+    private static string FormatPreview(IReadOnlyCollection<string> items)
+    {
+        const int maxItems = 8;
+        var preview = items.Take(maxItems).Select(item => $"  - {item}");
+        var text = string.Join(Environment.NewLine, preview);
+
+        return items.Count > maxItems
+            ? $"{text}{Environment.NewLine}  ... e mais {items.Count - maxItems}."
+            : text;
+    }
+
+    private void ShowSummary(UpdateSummary summary)
+    {
+        if (summary.Cancelled)
+        {
+            _lblProgress.Text = $"Cancelado. Sucesso: {summary.Succeeded} | Falha: {summary.Failed}.";
+            MessageBox.Show(
+                this,
+                $"Atualizacao cancelada.{Environment.NewLine}{Environment.NewLine}Concluidos: {summary.Succeeded}{Environment.NewLine}Com falha: {summary.Failed}",
+                "Cancelado",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
+        _progressBar.Value = _progressBar.Maximum;
+
+        if (summary.HasErrors)
+        {
+            _lblProgress.Text = $"Concluido com falhas. Sucesso: {summary.Succeeded} | Falha: {summary.Failed}.";
+            MessageBox.Show(
+                this,
+                $"A atualizacao terminou com falhas.{Environment.NewLine}{Environment.NewLine}Sucesso: {summary.Succeeded}{Environment.NewLine}Falha: {summary.Failed}{Environment.NewLine}{Environment.NewLine}Consulte o log para os detalhes.",
+                "Concluido com falhas",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
+        _lblProgress.Text = $"Atualizacao concluida. {summary.Succeeded} arquivo(s) atualizado(s).";
+        MessageBox.Show(
+            this,
+            $"Atualizacao concluida com sucesso.{Environment.NewLine}{Environment.NewLine}{summary.Succeeded} arquivo(s) atualizado(s).",
+            "Sucesso",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+    }
+
+    private void CancelUpdate()
+    {
+        if (_cancellation is null || _cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _btnCancel.Enabled = false;
+        _lblProgress.Text = "Cancelando... aguarde o fim da operacao atual.";
+        AppendLog("Cancelamento solicitado pelo usuario.");
+        _cancellation.Cancel();
+    }
+
+    private void SetBusyState(bool busy)
+    {
+        _btnUpdate.Enabled = !busy;
+        _btnConfig.Enabled = !busy;
+        _btnReload.Enabled = !busy;
+        _btnToggleLog.Enabled = !busy;
+        _exeListView.Enabled = !busy;
+        _serverListBox.Enabled = !busy;
+        _btnCancel.Enabled = busy;
+        UseWaitCursor = busy;
+    }
+
+    private void OnFormClosing(object? sender, FormClosingEventArgs e)
+    {
+        if (_cancellation is null)
+        {
+            return;
+        }
+
+        // Fechar no meio de uma copia deixa arquivos temporarios e backups sem par.
+        var answer = MessageBox.Show(
+            this,
+            "Uma atualizacao esta em andamento. Deseja cancelar e fechar?",
+            "Atualizacao em andamento",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+
+        if (answer == DialogResult.Yes)
+        {
+            CancelUpdate();
+        }
+
+        e.Cancel = true;
     }
 
     private void ToggleLog()
@@ -504,23 +643,20 @@ public sealed class MainForm : Form
     private void AppendLog(string message)
     {
         _txtLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
+        _fileLogger.Write(message);
     }
 
-    private static Bitmap LoadExeIcon(string exePath)
+    protected override void Dispose(bool disposing)
     {
-        try
+        if (disposing)
         {
-            using var icon = Icon.ExtractAssociatedIcon(exePath);
-            if (icon is not null)
-            {
-                return icon.ToBitmap();
-            }
-        }
-        catch
-        {
-            // Fallback below.
+            ExeIcons.Clear(_exeImageList, _exeIcons);
+            _cancellation?.Dispose();
+            _titleFont.Dispose();
+            _subtitleFont.Dispose();
+            _sectionFont.Dispose();
         }
 
-        return SystemIcons.Application.ToBitmap();
+        base.Dispose(disposing);
     }
 }

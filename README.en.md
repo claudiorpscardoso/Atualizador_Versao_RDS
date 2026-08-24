@@ -10,6 +10,7 @@ Prerequisite: .NET 10 SDK installed.
 
 ```powershell
 dotnet build
+dotnet test
 dotnet run --project .\AtualizadorVersaoRds
 ```
 
@@ -30,9 +31,15 @@ In short:
 ## ⚙️ Update routine
 For each server and each selected executable:
 1. Access server folder.
-2. Find the current executable in that folder.
-3. If found, rename it to a `REMOVER_` backup.
-4. Copy the new executable from source folder.
+2. Copy the new executable to a temporary file on the server and verify its size.
+3. If the current executable exists, rename it to a `REMOVER_` backup.
+4. Promote the temporary file to the final name.
+
+### 🛡️ Why the copy happens before the backup
+The server file is only touched after the copy completed and was validated.
+If any step fails — network drop, file in use, missing permission — the process
+rolls back and **the executable already on the server stays intact**. The item is
+counted as a failure in the summary and the run moves on to the remaining items.
 
 ### 📦 Backup rule (important)
 If `REMOVER_File.exe` already exists, the app **does not delete it**.
@@ -51,7 +58,8 @@ On the main screen you have:
 - `Recarregar EXEs`: reload `.exe` list from source folder.
 - `Exibir log`: show/hide execution log.
 - Executable list with checkbox and icon.
-- `Atualizar selecionados`: start update process.
+- `Atualizar selecionados`: start update process (asks for confirmation first).
+- `Cancelar`: safely stop a running update.
 - Progress bar with real-time status.
 
 ---
@@ -68,10 +76,13 @@ On the main screen you have:
 
 ## 🔄 Running an update
 1. Click `Recarregar EXEs`.
-2. Select desired executables.
-3. Click `Atualizar selecionados`.
+2. Select the desired servers and executables.
+3. Click `Atualizar selecionados` and confirm the summary shown.
 4. Follow status and progress bar.
-5. Check the completion message at the end.
+5. Check the completion message at the end — it reports how many items
+   succeeded and how many failed.
+
+💡 Right-click either list for `Marcar todos` / `Desmarcar todos`.
 
 ---
 
@@ -126,7 +137,21 @@ Yes. Select only the `.exe` files you want.
 Yes. Settings support multiple folder paths.
 
 ### Where are settings stored?
-In `settings.json`, next to the app executable.
+In `%APPDATA%\AtualizadorVersaoRds\settings.json`. Coming from 1.0.x, the old file
+(next to the executable) is migrated automatically on first run.
+
+### Where is the execution log?
+In `%APPDATA%\AtualizadorVersaoRds\logs\atualizacao-YYYYMMDD.log`, one file per day.
+The `Exibir log` panel shows the same content for the current session.
+
+### Can I cancel mid-run?
+Yes. `Cancelar` stops after the current file finishes, never leaving a
+half-written executable on the server.
+
+### Do I need .NET installed?
+Depends on the package you download from the releases page:
+- `...-win-x64.zip`: smaller, requires the **.NET Desktop Runtime 10**.
+- `...-win-x64-self-contained.zip`: single executable, requires nothing installed.
 
 ---
 

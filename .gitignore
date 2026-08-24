@@ -1,7 +1,10 @@
 bin/
 obj/
+publish/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
 .vs/
+TestResults/
+*.zip
