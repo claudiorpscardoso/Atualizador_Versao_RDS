@@ -13,6 +13,7 @@ public sealed class MainForm : Form
     private readonly Label _lblServerList = new();
     private readonly ListView _exeListView = new();
     private readonly ImageList _exeImageList = new();
+    private readonly List<Bitmap> _exeIcons = [];
     private readonly CheckedListBox _serverListBox = new();
     private readonly ContextMenuStrip _exeListMenu = new();
     private readonly ContextMenuStrip _serverListMenu = new();
@@ -389,7 +390,7 @@ public sealed class MainForm : Form
     private void LoadExecutableList()
     {
         _exeListView.Items.Clear();
-        _exeImageList.Images.Clear();
+        ExeIcons.Clear(_exeImageList, _exeIcons);
 
         if (string.IsNullOrWhiteSpace(_settings.SourceFolder))
         {
@@ -407,17 +408,13 @@ public sealed class MainForm : Form
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Os icones sao carregados na mesma ordem dos arquivos, para que o indice de
+        // cada ListViewItem aponte para a imagem certa.
+        ExeIcons.Load(_exeImageList, _exeIcons, exeFiles);
+
         for (var index = 0; index < exeFiles.Count; index++)
         {
-            var exePath = exeFiles[index];
-            var exeName = Path.GetFileName(exePath);
-
-            // O ImageList clona o bitmap ao adicionar; o original precisa ser liberado
-            // para nao acumular handles GDI a cada recarga.
-            using (var icon = LoadExeIcon(exePath))
-            {
-                _exeImageList.Images.Add(icon);
-            }
+            var exeName = Path.GetFileName(exeFiles[index]);
 
             var item = new ListViewItem(exeName, index)
             {
@@ -653,6 +650,7 @@ public sealed class MainForm : Form
     {
         if (disposing)
         {
+            ExeIcons.Clear(_exeImageList, _exeIcons);
             _cancellation?.Dispose();
             _titleFont.Dispose();
             _subtitleFont.Dispose();
@@ -660,23 +658,5 @@ public sealed class MainForm : Form
         }
 
         base.Dispose(disposing);
-    }
-
-    private static Bitmap LoadExeIcon(string exePath)
-    {
-        try
-        {
-            using var icon = Icon.ExtractAssociatedIcon(exePath);
-            if (icon is not null)
-            {
-                return icon.ToBitmap();
-            }
-        }
-        catch
-        {
-            // Fallback below.
-        }
-
-        return SystemIcons.Application.ToBitmap();
     }
 }

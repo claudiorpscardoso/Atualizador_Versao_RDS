@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-08-24
+### Fixed
+- A tela principal nao abre mais com o erro `Parameter is not valid` quando a pasta
+  de origem tem executaveis. Ao corrigir o vazamento de handles GDI na 1.1.0 os
+  bitmaps passaram a ser liberados antes de o `ImageList` copia-los, o que derrubava
+  o aplicativo na criacao do `ListView`. Os bitmaps agora vivem enquanto a lista
+  existe e sao liberados na recarga e no fechamento - sem reabrir o vazamento.
+- Cobertura de teste para o caminho que falhava (`ExeIconsTests`).
+
 ## [1.1.0] - 2026-08-11
 ### Added
 - Botão `Cancelar` para interromper uma atualização em andamento.
